@@ -1,5 +1,5 @@
-build
-.gitignore
-pico_sdk_import.cmake
-main.txt
 .vscode
+build
+main.txt
+pico_sdk_import.cmake
+.gitignore

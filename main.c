@@ -86,15 +86,15 @@ void atualizar_oled(float umidade) {
     char buf[32];
     ssd1306_fill(&oled, false);
 
-    ssd1306_draw_string(&oled, "AgroSmart", 0, 0);
-    ssd1306_draw_string(&oled, "Umidade:", 0, 12);
+    ssd1306_draw_string(&oled, "AgroSmart", 25, 0);
+    ssd1306_draw_string(&oled, "Umidade:", 0, 20);
     snprintf(buf, sizeof(buf), "%.1f%%", umidade);
-    ssd1306_draw_string(&oled, buf, 72, 12);
+    ssd1306_draw_string(&oled, buf, 72, 20);
 
     if (alerta) {
-        ssd1306_draw_string(&oled, "ALERTA BAIXO!", 0, 28);
+        ssd1306_draw_string(&oled, "ALERTA BAIXO!", 0, 40);
     } else {
-        ssd1306_draw_string(&oled, "Nivel OK", 0, 28);
+        ssd1306_draw_string(&oled, "Nivel OK", 0, 40);
     }
 
     ssd1306_send_data(&oled);
@@ -148,18 +148,25 @@ err_t receber_requisicao(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t 
     // Monta HTML
     char html[1024];
     snprintf(html, sizeof(html),
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/html\r\n\r\n"
-        "<!DOCTYPE html><html><head><title>AgroSmart</title>"
-        "<style>body{font-family:sans-serif;text-align:center;}"
-        "h1{margin-top:30px;}button{font-size:20px;padding:10px;}</style>"
-        "</head><body><h1>AgroSmart</h1>"
-        "<p>Umidade: %.1f%%</p>"
-        "%s"
-        "<form action='/resetar'><button>Resetar</button></form>"
-        "</body></html>",
-        umidade,
-        alerta ? "<p style='color:red;'>Alerta: Umidade baixa!</p>" : "<p style='color:green;'>Nivel OK</p>"
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/html\r\n\r\n"
+    "<!DOCTYPE html><html><head><title>AgroSmart</title>"
+    "<style>"
+      "body{font-family:sans-serif;text-align:center;}"
+      "h1{margin-top:30px;}"
+      "button{font-size:20px;padding:10px;margin:5px;}"
+    "</style>"
+    "</head><body>"
+      "<h1>AgroSmart</h1>"
+      "<p>Umidade: %.1f%%</p>"
+      "%s"
+      "<form action='/'><button type='submit'>Atualizar</button></form>"
+      "<form action='/resetar'><button type='submit'>Resetar Alerta</button></form>"
+    "</body></html>",
+    umidade,
+    alerta 
+      ? "<p style='color:red;'>Alerta: Umidade baixa!</p>"
+      : "<p style='color:green;'>Nivel OK</p>"
     );
 
     tcp_write(tpcb, html, strlen(html), TCP_WRITE_FLAG_COPY);
