@@ -5,12 +5,17 @@
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
+#include "hardware/i2c.h"
 #include "pico/cyw43_arch.h"
 
 #include "lwip/tcp.h"
 #include "lwip/netif.h"
 
 #include "pico/time.h"
+
+// Biblioteca SSD1306
+#include "lib/ssd1306.h"
+#include "lib/font.h"
 
 #define ALARME_DURACAO_MS 10000
 #define BUZZER_BEEP_INTERVAL_MS 500
@@ -29,7 +34,16 @@ bool buzzer_on = false;
 #define LED_ALERTA_PIN 13         // LED vermelho
 #define JOYSTICK_ADC_GPIO 26      // GPIO do potenciômetro (ADC0)
 
+// I2C para OLED
+#define I2C_PORT i2c1
+#define I2C_SDA  14
+#define I2C_SCL  15
+#define OLED_ADDR 0x3C
+
 bool alerta = false;
+
+// Ponteiro do display
+ssd1306_t oled;
 
 // ======== INICIALIZAÇÃO DE HARDWARE ========
 void inicializa_hardware(void) {
@@ -44,6 +58,18 @@ void inicializa_hardware(void) {
     adc_init();
     adc_gpio_init(JOYSTICK_ADC_GPIO); // GPIO26 = ADC0
     adc_select_input(0); // ADC0
+
+    // I2C e SSD1306
+    i2c_init(I2C_PORT, 400 * 1000);
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_SDA);
+    gpio_pull_up(I2C_SCL);
+
+    ssd1306_init(&oled, WIDTH, HEIGHT, false, OLED_ADDR, I2C_PORT);
+    ssd1306_config(&oled);
+    ssd1306_fill(&oled, false);
+    ssd1306_send_data(&oled);
 }
 
 // ======== LEITURA DO JOYSTICK COMO UMIDADE ========
@@ -53,6 +79,25 @@ float ler_umidade(void) {
     float umidade_percent = 100.0f - ((raw * 100.0f) / 4095.0f);
     printf("ADC: %d | Umidade: %.2f%%\n", raw, umidade_percent);
     return umidade_percent;
+}
+
+// ======== DISPLAY OLED ========
+void atualizar_oled(float umidade) {
+    char buf[32];
+    ssd1306_fill(&oled, false);
+
+    ssd1306_draw_string(&oled, "AgroSmart", 0, 0);
+    ssd1306_draw_string(&oled, "Umidade:", 0, 12);
+    snprintf(buf, sizeof(buf), "%.1f%%", umidade);
+    ssd1306_draw_string(&oled, buf, 72, 12);
+
+    if (alerta) {
+        ssd1306_draw_string(&oled, "ALERTA BAIXO!", 0, 28);
+    } else {
+        ssd1306_draw_string(&oled, "Nivel OK", 0, 28);
+    }
+
+    ssd1306_send_data(&oled);
 }
 
 // ======== ALERTA DE BAIXA UMIDADE ========
@@ -97,23 +142,24 @@ err_t receber_requisicao(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t 
     float umidade = ler_umidade();
     if (!alerta) verificar_alerta(umidade);
 
+    // Atualiza display
+    atualizar_oled(umidade);
+
+    // Monta HTML
     char html[1024];
     snprintf(html, sizeof(html),
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: text/html\r\n\r\n"
-        "<!DOCTYPE html><html><head><title>AgroSmart</title><style>"
-        "body { font-family: sans-serif; text-align: center; background-color: #e6ffe6; }"
-        "h1 { font-size: 40px; margin-top: 30px; }"
-        ".info { font-size: 28px; margin-top: 20px; }"
-        "button { font-size: 24px; padding: 10px 30px; margin-top: 30px; }"
-        "</style></head><body>"
-        "<h1>AgroSmart - Umidade do Solo</h1>"
-        "<p class='info'>Umidade atual: %.2f%%</p>"
+        "<!DOCTYPE html><html><head><title>AgroSmart</title>"
+        "<style>body{font-family:sans-serif;text-align:center;}"
+        "h1{margin-top:30px;}button{font-size:20px;padding:10px;}</style>"
+        "</head><body><h1>AgroSmart</h1>"
+        "<p>Umidade: %.1f%%</p>"
         "%s"
-        "<form action='/resetar'><button>Resetar Alerta</button></form>"
+        "<form action='/resetar'><button>Resetar</button></form>"
         "</body></html>",
         umidade,
-        alerta ? "<p class='info' style='color:red;'>Alerta: Umidade muito baixa!</p>" : "<p class='info' style='color:green;'>Nivel dentro do ideal.</p>"
+        alerta ? "<p style='color:red;'>Alerta: Umidade baixa!</p>" : "<p style='color:green;'>Nivel OK</p>"
     );
 
     tcp_write(tpcb, html, strlen(html), TCP_WRITE_FLAG_COPY);
