@@ -62,8 +62,8 @@ Pré-requisitos:
 ### Passos:
 
 ```bash
-git clone https://github.com/seu-usuario/agrosmart_webserver.git
-cd agrosmart_webserver
+git clone https://github.com/luizfiliperibeiro/AgroSmart_WebServer.git
+cd AgroSmart_WebServer
 mkdir build
 cd build
 cmake ..
