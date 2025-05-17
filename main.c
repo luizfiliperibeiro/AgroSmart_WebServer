@@ -33,6 +33,7 @@ bool buzzer_on = false;
 #define BUZZER_PIN 21
 #define LED_ALERTA_PIN 13         // LED vermelho
 #define JOYSTICK_ADC_GPIO 26      // GPIO do potenciômetro (ADC0)
+#define LED_IRRIGACAO_PIN 11      // LED verde
 
 // I2C para OLED
 #define I2C_PORT i2c1
@@ -41,6 +42,7 @@ bool buzzer_on = false;
 #define OLED_ADDR 0x3C
 
 bool alerta = false;
+bool irrigando = false;
 
 // Ponteiro do display
 ssd1306_t oled;
@@ -54,6 +56,10 @@ void inicializa_hardware(void) {
     gpio_init(LED_ALERTA_PIN);
     gpio_set_dir(LED_ALERTA_PIN, GPIO_OUT);
     gpio_put(LED_ALERTA_PIN, 0);
+
+    gpio_init(LED_IRRIGACAO_PIN);
+    gpio_set_dir(LED_IRRIGACAO_PIN, GPIO_OUT);
+    gpio_put(LED_IRRIGACAO_PIN, 0);
 
     adc_init();
     adc_gpio_init(JOYSTICK_ADC_GPIO); // GPIO26 = ADC0
@@ -87,14 +93,18 @@ void atualizar_oled(float umidade) {
     ssd1306_fill(&oled, false);
 
     ssd1306_draw_string(&oled, "AgroSmart", 25, 0);
-    ssd1306_draw_string(&oled, "Umidade:", 0, 20);
+    ssd1306_draw_string(&oled, "Umidade:", 0, 30);
     snprintf(buf, sizeof(buf), "%.1f%%", umidade);
-    ssd1306_draw_string(&oled, buf, 72, 20);
+    ssd1306_draw_string(&oled, buf, 72, 30);
 
     if (alerta) {
         ssd1306_draw_string(&oled, "ALERTA BAIXO!", 0, 40);
     } else {
         ssd1306_draw_string(&oled, "Nivel OK", 0, 40);
+    }
+
+    if (irrigando) {
+        ssd1306_draw_string(&oled, "Irrigando...", 0, 50);
     }
 
     ssd1306_send_data(&oled);
@@ -122,6 +132,12 @@ void resetar_alerta(void) {
 void tratar_requisicao(char *req) {
     if (strstr(req, "GET /resetar") != NULL) {
         resetar_alerta();
+    } else if (strstr(req, "GET /irrigar_on")) {
+        irrigando = true;
+        gpio_put(LED_IRRIGACAO_PIN, 1);
+    } else if (strstr(req, "GET /irrigar_off")) {
+        irrigando = false;
+        gpio_put(LED_IRRIGACAO_PIN, 0);
     }
 }
 
@@ -148,25 +164,24 @@ err_t receber_requisicao(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t 
     // Monta HTML
     char html[1024];
     snprintf(html, sizeof(html),
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Type: text/html\r\n\r\n"
-    "<!DOCTYPE html><html><head><title>AgroSmart</title>"
-    "<style>"
-      "body{font-family:sans-serif;text-align:center;}"
-      "h1{margin-top:30px;}"
-      "button{font-size:20px;padding:10px;margin:5px;}"
-    "</style>"
-    "</head><body>"
-      "<h1>AgroSmart</h1>"
-      "<p>Umidade: %.1f%%</p>"
-      "%s"
-      "<form action='/'><button type='submit'>Atualizar</button></form>"
-      "<form action='/resetar'><button type='submit'>Resetar Alerta</button></form>"
-    "</body></html>",
-    umidade,
-    alerta 
-      ? "<p style='color:red;'>Alerta: Umidade baixa!</p>"
-      : "<p style='color:green;'>Nivel OK</p>"
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/html\r\n\r\n"
+        "<!DOCTYPE html><html><head><title>AgroSmart</title>"
+        "<style>body{font-family:sans-serif;text-align:center;}"
+        "h1{margin-top:30px;}button{font-size:20px;padding:10px;margin:5px;}</style>"
+        "</head><body><h1>AgroSmart</h1>"
+        "<p>Umidade: %.1f%%</p>"
+        "%s"
+        "<p style='color:%s;'>%s</p>"
+        "<form action='/'><button type='submit'>Atualizar</button></form>"
+        "<form action='/resetar'><button type='submit'>Resetar Alerta</button></form>"
+        "<form action='/irrigar_on'><button type='submit'>Iniciar Irrigacao</button></form>"
+        "<form action='/irrigar_off'><button type='submit'>Parar Irrigacao</button></form>"
+        "</body></html>",
+        umidade,
+        alerta ? "<p style='color:red;'>Alerta: Umidade baixa!</p>" : "<p style='color:green;'>Nivel OK</p>",
+        irrigando ? "blue" : "gray",
+        irrigando ? "Modo Irrigacao Manual Ativado" : "Irrigacao Manual Desativada"
     );
 
     tcp_write(tpcb, html, strlen(html), TCP_WRITE_FLAG_COPY);
