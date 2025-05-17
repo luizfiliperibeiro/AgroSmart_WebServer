@@ -1,40 +1,94 @@
-# 🌱 AgroSmart - Monitoramento de Umidade do Solo com Webserver (Pico W)
+# 🌱 AgroSmart – Estação de Monitoramento de Solo com Webserver
 
-Este projeto foi desenvolvido como parte do tópico **Comunicação em IoT - 37M3SE** (Residência Embarcatech), orientado pelo Prof. Dr. Ricardo Menezes Prates e pelo Prof. Auerê Vasconcelos Veras.
+Este projeto foi desenvolvido como parte do tópico **Comunicação em IoT - 37M3SE (Residência Embarcatech)**, com o objetivo de criar uma estação inteligente de monitoramento de solo embarcada, acessível via interface Web.
 
-## 📌 Objetivo
+---
 
-Desenvolver um sistema de monitoramento de umidade do solo utilizando o **Raspberry Pi Pico W** com o módulo Wi-Fi **CYW43439**, capaz de exibir os dados via Webserver e emitir alertas visuais e sonoros quando a umidade estiver abaixo de um limite crítico.
+## 🧠 Objetivo
 
-## 🧠 Funcionalidades Implementadas
+Simular um sistema embarcado de agricultura de precisão que monitora:
+- Umidade do solo (simulada via joystick vertical)
+- Temperatura (simulada via joystick horizontal)
 
-- ✅ Leitura de umidade simulada via **potenciômetro do joystick (GPIO26 / ADC0)**.
-- ✅ Exibição do valor de umidade atual em uma **interface HTML interativa**.
-- ✅ Geração de **alerta visual (LED vermelho)** e **alarme sonoro (buzzer)** em caso de baixa umidade.
-- ✅ Comportamento do buzzer configurado como **alarme com bipes** por 10 segundos.
-- ✅ Botão “Resetar Alerta” na interface Web para desativar os alarmes.
-- ✅ Código em linguagem **C puro**, com uso do **Pico SDK** e **LwIP TCP/IP stack**.
+Com suporte a:
+- Interface Web com atualização em tempo real
+- Alertas visuais e sonoros
+- Controle manual de irrigação
 
-## 🌐 Interface Web
+---
 
-A página HTML é servida localmente e apresenta:
+## 🛠 Tecnologias e Recursos
 
-- Valor atual da umidade (%)
-- Mensagem de status (`Nível dentro do ideal` ou `Alerta: Umidade muito baixa!`)
-- Botão para resetar o alerta
+- ✅ **Placa BitDogLab (RP2040 + CYW43439)**
+- ✅ **Wi-Fi via CYW43 com LwIP (modo polling)**
+- ✅ **Servidor Web embarcado na porta 80**
+- ✅ **Display OLED SSD1306 (I2C)**
+- ✅ **Joystick analógico (ADC0 e ADC1)**
+- ✅ **LEDs e buzzer para alertas**
+- ✅ **Botões Web para reset e irrigação**
 
-## 💻 Tecnologias Utilizadas
+---
 
-- Raspberry Pi Pico W (RP2040 + CYW43439)
-- ADC do RP2040
-- Stack LwIP (protocolo TCP/IP)
-- GPIOs, buzzer, LED
-- Servidor TCP simples na porta 80
-- HTML embutido no firmware
+## 💻 Interface Web
 
-## 🛠️ Requisitos
+Acessível via navegador (Wi-Fi local). Apresenta:
 
-- [Pico SDK](https://github.com/raspberrypi/pico-sdk) corretamente configurado
-- Ferramentas de build: `cmake`, `ninja` ou `make`
-- Editor: VS Code com extensão CMake Tools (recomendado)
-- Exclusões no antivírus para permitir compilação de `.elf` e `.uf2`
+- Umidade do solo (em %)
+- Status do sistema: alerta, irrigação ativa
+- Botões para:
+  - 🔄 Atualizar os dados
+  - 🚫 Resetar o alerta
+  - 🚿 Iniciar irrigação
+  - 🛑 Parar irrigação
+
+---
+
+## 📟 Interface OLED
+
+O display exibe:
+- Título do projeto
+- Umidade
+- Temperatura
+- Status de irrigação
+
+---
+
+## 🔧 Como compilar
+
+Pré-requisitos:
+- Pico SDK instalado e configurado
+- VS Code com CMake Tools **ou** uso do terminal com `cmake` e `make`
+
+### Passos:
+
+```bash
+git clone https://github.com/seu-usuario/agrosmart_webserver.git
+cd agrosmart_webserver
+mkdir build
+cd build
+cmake ..
+make
+```
+O arquivo .uf2 será gerado e pode ser gravado na placa via modo bootloader.
+
+---
+
+## 👨‍💻 Autor
+
+Luiz Filipe Ribeiro de Jesus
+
+Comunicação em IoT (37M3SE)
+
+Polo: Vitória da Conquista
+
+Professor: Dr. Ricardo Menezes Prates
+
+Mentor: Auerê Vasconcelos Veras
+
+Data: Maio de 2025
+
+---
+
+## 🎥 Demonstração em Vídeo
+
+📹 [Clique aqui para assistir à demonstração do projeto](https://drive.google.com/file/d/1f3V-rScIezGIDB3gVNh9bIogvQNJ-jGM/view?usp=drive_link)
