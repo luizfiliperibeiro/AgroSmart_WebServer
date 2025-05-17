@@ -63,6 +63,7 @@ void inicializa_hardware(void) {
 
     adc_init();
     adc_gpio_init(JOYSTICK_ADC_GPIO); // GPIO26 = ADC0
+    adc_gpio_init(27); // ADC1 - Temperatura simulada
     adc_select_input(0); // ADC0
 
     // I2C e SSD1306
@@ -87,18 +88,29 @@ float ler_umidade(void) {
     return umidade_percent;
 }
 
+// ======== LEITURA DO ADC DE TEMPERATURA ========
+float ler_temperatura_simulada(void) {
+    adc_select_input(1);
+    uint16_t raw = adc_read();
+    return 20.0f + (raw * 20.0f / 4095.0f); // 20 a 40°C
+}
+
 // ======== DISPLAY OLED ========
-void atualizar_oled(float umidade) {
+void atualizar_oled(float umidade, float temperatura) {
     char buf[32];
     ssd1306_fill(&oled, false);
 
     ssd1306_draw_string(&oled, "AgroSmart", 25, 0);
-    ssd1306_draw_string(&oled, "Umidade:", 0, 30);
+    ssd1306_draw_string(&oled, "Umid:", 0, 20);
     snprintf(buf, sizeof(buf), "%.1f%%", umidade);
-    ssd1306_draw_string(&oled, buf, 72, 30);
+    ssd1306_draw_string(&oled, buf, 64, 20);
+
+    ssd1306_draw_string(&oled, "Temp:", 0, 30);
+    snprintf(buf, sizeof(buf), "%.1fC", temperatura);
+    ssd1306_draw_string(&oled, buf, 64, 30);
 
     if (alerta) {
-        ssd1306_draw_string(&oled, "ALERTA BAIXO!", 0, 40);
+        ssd1306_draw_string(&oled, "UMID. BAIXA!", 0, 40);
     } else {
         ssd1306_draw_string(&oled, "Nivel OK", 0, 40);
     }
@@ -158,8 +170,10 @@ err_t receber_requisicao(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t 
     float umidade = ler_umidade();
     if (!alerta) verificar_alerta(umidade);
 
+    float temperatura = ler_temperatura_simulada();
+
     // Atualiza display
-    atualizar_oled(umidade);
+    atualizar_oled(umidade, temperatura);
 
     // Monta HTML
     char html[1024];
@@ -179,7 +193,7 @@ err_t receber_requisicao(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t 
         "<form action='/irrigar_off'><button type='submit'>Parar Irrigacao</button></form>"
         "</body></html>",
         umidade,
-        alerta ? "<p style='color:red;'>Alerta: Umidade baixa!</p>" : "<p style='color:green;'>Nivel OK</p>",
+        alerta ? "<p style='color:red;'>Alerta: Umidade baixa!</p>" : "<p style='color:green;'>Nivel de Umidade OK</p>",
         irrigando ? "blue" : "gray",
         irrigando ? "Modo Irrigacao Manual Ativado" : "Irrigacao Manual Desativada"
     );
