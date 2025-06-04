@@ -1,94 +1,124 @@
-# 🌱 AgroSmart – Estação de Monitoramento de Solo com Webserver
+# 🌱 AgroSmart MQTT – Estação Inteligente com Publicação e Controle via Broker
 
-Este projeto foi desenvolvido como parte do tópico **Comunicação em IoT - 37M3SE (Residência Embarcatech)**, com o objetivo de criar uma estação inteligente de monitoramento de solo embarcada, acessível via interface Web.
-
----
-
-## 🧠 Objetivo
-
-Simular um sistema embarcado de agricultura de precisão que monitora:
-- Umidade do solo (simulada via joystick vertical)
-- Temperatura (simulada via joystick horizontal)
-
-Com suporte a:
-- Interface Web com atualização em tempo real
-- Alertas visuais e sonoros
-- Controle manual de irrigação
+Este projeto integra sensores simulados de umidade e temperatura com um sistema embarcado conectado a um **broker MQTT**, permitindo o **monitoramento remoto em tempo real**, além de **controle manual da irrigação e reset de alertas** via tópicos MQTT.
 
 ---
 
-## 🛠 Tecnologias e Recursos
+## 🎯 Objetivo
 
-- ✅ **Placa BitDogLab (RP2040 + CYW43439)**
-- ✅ **Wi-Fi via CYW43 com LwIP (modo polling)**
-- ✅ **Servidor Web embarcado na porta 80**
-- ✅ **Display OLED SSD1306 (I2C)**
-- ✅ **Joystick analógico (ADC0 e ADC1)**
-- ✅ **LEDs e buzzer para alertas**
-- ✅ **Botões Web para reset e irrigação**
+Simular um sistema embarcado de **agricultura de precisão** com:
 
----
-
-## 💻 Interface Web
-
-Acessível via navegador (Wi-Fi local). Apresenta:
-
-- Umidade do solo (em %)
-- Status do sistema: alerta, irrigação ativa
-- Botões para:
-  - 🔄 Atualizar os dados
-  - 🚫 Resetar o alerta
-  - 🚿 Iniciar irrigação
-  - 🛑 Parar irrigação
+- Monitoramento de **umidade do solo** e **temperatura ambiente** (via joystick)
+- **Publicação contínua** dos dados via MQTT
+- **Alertas automáticos** com LED e buzzer
+- **Controle remoto** da irrigação via MQTT
+- **Interface visual local** com OLED SSD1306
 
 ---
 
-## 📟 Interface OLED
+## 🛠️ Tecnologias e Recursos
 
-O display exibe:
-- Título do projeto
-- Umidade
-- Temperatura
-- Status de irrigação
+- ✅ **Placa BitDogLab RP2040 + CYW43439** (Wi-Fi)
+- ✅ MQTT via **LWIP embutido no Pico SDK**
+- ✅ **Broker local** (Mosquitto) com autenticação
+- ✅ **Display OLED SSD1306** com I2C
+- ✅ **Joystick analógico** (GPIO26 e GPIO27) para simulação de sensores
+- ✅ LEDs e buzzer para alertas
+- ✅ **Controle por tópicos MQTT** usando ferramentas como:
+  - `mosquitto_pub` / `mosquitto_sub`
+  - **MQTT Explorer**
+  - **IoT MQTT Panel (Android)**
 
 ---
 
-## 🔧 Como compilar
+## 🔌 Ligações
 
-Pré-requisitos:
-- Pico SDK instalado e configurado
-- VS Code com CMake Tools **ou** uso do terminal com `cmake` e `make`
+| Componente       | GPIO          |
+|------------------|---------------|
+| Joystick Umidade | ADC0 (GPIO26) |
+| Joystick Temp.   | ADC1 (GPIO27) |
+| LED Alerta       | GPIO13        |
+| LED Irrigação    | GPIO11        |
+| Buzzer           | GPIO21        |
+| I2C SDA (OLED)   | GPIO14        |
+| I2C SCL (OLED)   | GPIO15        |
 
-### Passos:
+---
+
+## 🔄 Tópicos MQTT
+
+| Tópico                 | Direção      | Função                              |
+|------------------------|--------------|-------------------------------------|
+| `/temperatura`         | 📨 Publish   | Publica valor da temperatura (°C)   |
+| `/umidade`             | 📨 Publish   | Publica valor da umidade (%)        |
+| `/irrigacao/comando`   | 📥 Subscribe | `"on"` ou `"off"` → ativa irrigação |
+| `/irrigacao/status`    | 📨 Publish   | `"ativada"` ou `"parada"`           |
+| `/alerta/resetar`      | 📥 Subscribe | `"reset"` → reseta alerta/buzzer    |
+
+---
+
+## 🖥️ Display OLED
+
+Exibe em tempo real:
 
 ```bash
-git clone https://github.com/luizfiliperibeiro/AgroSmart_WebServer.git
-cd AgroSmart_WebServer
-mkdir build
-cd build
-cmake ..
-make
+🌱 AgroSmart
+Umid: 52.3 %
+Temp: 28.7 C
+Nivel OK ← ou: UMID. BAIXA!
+Irrigando... ← somente se ativa
 ```
-O arquivo .uf2 será gerado e pode ser gravado na placa via modo bootloader.
+
+---
+
+## 🔔 Alerta Automático
+
+- Ativado se umidade < 30%
+- LED vermelho acende
+- Buzzer emite bipes por 10 segundos
+- Pode ser resetado via MQTT (`/alerta/resetar`)
+
+---
+
+## 📦 Compilação
+
+Projeto feito com **Pico SDK + LWIP + MQTT + FreeRTOS (opcional)**. Para compilar:
+
+```bash
+cd agrosmart_mqtt
+mkdir build && cd build
+cmake ..
+ninja
+```
+
+---
+
+## 📡 Broker MQTT Recomendado
+
+- 🐧 Linux/Termux: mosquitto -c mosquitto.conf -v
+- 🪟 Windows: Baixe Mosquitto Installer com mosquitto_pub/mosquitto_sub
+- 🛠 Configure arquivo mosquitto.conf com listener 1883, allow_anonymous false, etc.
+
+---
+
+## 📱 Testes com MQTT Explorer
+
+- Broker: 192.168.X.Y (IP do PC ou celular)
+- Porta: 1883
+- Username/Password: conforme definido
+
+---
+
+## 📲 Publicação de comandos via terminal
+
+```bash
+mosquitto_pub -h 192.168.1.38 -t "/irrigacao/comando" -m "on"
+mosquitto_pub -h 192.168.1.38 -t "/irrigacao/comando" -m "off"
+mosquitto_pub -h 192.168.1.38 -t "/alerta/resetar" -m "reset"
+```
 
 ---
 
 ## 👨‍💻 Autor
 
-Luiz Filipe Ribeiro de Jesus
-
-Comunicação em IoT (37M3SE)
-
-Polo: Vitória da Conquista
-
-Professor: Dr. Ricardo Menezes Prates
-
-Mentor: Auerê Vasconcelos Veras
-
-Data: Maio de 2025
-
----
-
-## 🎥 Demonstração em Vídeo
-
-📹 [Clique aqui para assistir à demonstração do projeto](https://drive.google.com/file/d/1f3V-rScIezGIDB3gVNh9bIogvQNJ-jGM/view?usp=drive_link)
+Projeto desenvolvido por Luiz Filipe Ribeiro de Jesus para o programa Embarcatech, com base no exemplo didático do Prof. Ricardo Prates.
