@@ -26,11 +26,11 @@
 #include "lib/ssd1306.h"
 #include "lib/font.h"
 
-#define WIFI_SSID "Filipe"                    // Substitua pelo nome da sua rede Wi-Fi
-#define WIFI_PASSWORD "23052148"              // Substitua pela senha da sua rede Wi-Fi
-#define MQTT_SERVER "192.168.1.38"            // Substitua pelo endereço do host - broket MQTT: Ex: 192.168.1.107
-#define MQTT_USERNAME "lipe"                  // Substitua pelo nome da host MQTT - Username
-#define MQTT_PASSWORD "5963"                  // Substitua pelo Password da host MQTT - credencial de acesso - caso exista
+#define WIFI_SSID "xxxxxx"                    // Substitua pelo nome da sua rede Wi-Fi
+#define WIFI_PASSWORD "xxxxxxxx"              // Substitua pela senha da sua rede Wi-Fi
+#define MQTT_SERVER "192.168.x.xx"            // Substitua pelo endereço do host - broket MQTT: Ex: 192.168.1.107
+#define MQTT_USERNAME "xxxx"                  // Substitua pelo nome da host MQTT - Username
+#define MQTT_PASSWORD "xxxx"                  // Substitua pelo Password da host MQTT - credencial de acesso - caso exista
 
 #ifndef MQTT_PORT
 #define MQTT_PORT 1883
