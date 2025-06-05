@@ -427,6 +427,18 @@ static void publish_temperature(MQTT_CLIENT_DATA_T *state) {
     }
 }
 
+// Função verificar alerta
+void verificar_alerta(float umidade) {
+    if (umidade < 30.0f && !alarm_active) {
+        alerta = true;
+        gpio_put(LED_ALERTA_PIN, 1);
+        alarm_active = true;
+        alarm_start = get_absolute_time();
+        last_beep_time = get_absolute_time();
+        buzzer_on = false;
+    }
+}
+
 // Publicar umidade do solo
 static void publish_humidity(MQTT_CLIENT_DATA_T *state) {
     static float old_umidade;
@@ -438,18 +450,6 @@ static void publish_humidity(MQTT_CLIENT_DATA_T *state) {
     }
     verificar_alerta(umidade);
     atualizar_display(umidade, ler_temperatura_simulada());
-}
-
-// Função verificar alerta
-void verificar_alerta(float umidade) {
-    if (umidade < 30.0f && !alarm_active) {
-        alerta = true;
-        gpio_put(LED_ALERTA_PIN, 1);
-        alarm_active = true;
-        alarm_start = get_absolute_time();
-        last_beep_time = get_absolute_time();
-        buzzer_on = false;
-    }
 }
 
 // Função para resetar o alerta
@@ -493,7 +493,7 @@ static void sub_unsub_topics(MQTT_CLIENT_DATA_T* state, bool sub) {
     mqtt_sub_unsub(state->mqtt_client_inst, full_topic(state, "/ping"), MQTT_SUBSCRIBE_QOS, cb, state, sub);
     mqtt_sub_unsub(state->mqtt_client_inst, full_topic(state, "/exit"), MQTT_SUBSCRIBE_QOS, cb, state, sub);
     mqtt_sub_unsub(state->mqtt_client_inst, full_topic(state, "/irrigacao/comando"), MQTT_SUBSCRIBE_QOS, cb, state, sub);
-    mqtt_sub_unsub(state->mqtt_client_inst, full_topic(state, "/alerta/resetar"), MQTT_SUBSCRIBE_QOS, cb, state, sub);
+    mqtt_sub_unsub(state->mqtt_client_inst, full_topic(state, "/alerta/comando"), MQTT_SUBSCRIBE_QOS, cb, state, sub);
 }
 
 // Dados de entrada MQTT
@@ -524,17 +524,29 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
     } else if (strcmp(basic_topic, "/exit") == 0) {
         state->stop_client = true; // stop the client when ALL subscriptions are stopped
         sub_unsub_topics(state, false); // unsubscribe
-    } else if (strcmp(basic_topic, "/irrigacao/comando") == 0) {
-        if (lwip_stricmp((const char *)state->data, "on") == 0 || strcmp((const char *)state->data, "1") == 0) {
-        controlar_irrigacao(state, true);
-        } else if (lwip_stricmp((const char *)state->data, "off") == 0 || strcmp((const char *)state->data, "0") == 0) {
-        controlar_irrigacao(state, false);
+    }
+    if (strcmp(basic_topic, "/irrigacao/comando") == 0) {
+        if (lwip_stricmp((const char *)state->data, "on") == 0) {
+            irrigando = true;
+            gpio_put(LED_IRRIGACAO_PIN, 1);
+            mqtt_publish(state->mqtt_client_inst, full_topic(state, "/irrigacao/status"), "on", 2, MQTT_PUBLISH_QOS, MQTT_PUBLISH_RETAIN, pub_request_cb, state);
+        } else if (lwip_stricmp((const char *)state->data, "off") == 0) {
+            irrigando = false;
+            gpio_put(LED_IRRIGACAO_PIN, 0);
+            mqtt_publish(state->mqtt_client_inst, full_topic(state, "/irrigacao/status"), "off", 3, MQTT_PUBLISH_QOS, MQTT_PUBLISH_RETAIN, pub_request_cb, state);
         }
-    } else if (strcmp(basic_topic, "/alerta/resetar") == 0) {
+    }
+    if (strcmp(basic_topic, "/alerta/comando") == 0) {
         if (lwip_stricmp((const char *)state->data, "reset") == 0) {
-            resetar_alerta();
-            atualizar_display(ler_umidade(), ler_temperatura_simulada());
-            INFO_printf("Alerta resetado via MQTT\n");
+            alerta = false;
+            alarm_active = false;
+            gpio_put(LED_ALERTA_PIN, 0);
+            gpio_put(BUZZER_PIN, 0);
+            mqtt_publish(state->mqtt_client_inst,
+                        full_topic(state, "/alerta/status"),
+                        "resetado", strlen("resetado"),
+                        MQTT_PUBLISH_QOS, MQTT_PUBLISH_RETAIN,
+                        pub_request_cb, state);
         }
     }
 }
